@@ -7,8 +7,8 @@
 #define DATALOG_FILENAME "data.log"
 #define ENABLE_PIN 2
 #define READ_PIN 3
-#define SYNC_CLOCK_FAILED_TIMEOUT 30 //should be ~300s
-#define MIDNIGHT_INTERVAL 5//86400L
+#define SYNC_CLOCK_FAILED_TIMEOUT 300 //should be ~300s
+#define MIDNIGHT_INTERVAL 3600//86400L
 #define MEDIAN_BUF_SIZE 11
 #define SAMPLES_TO_READ 30
 //#define BYTES_TO_READ 240
@@ -26,7 +26,7 @@ unsigned int localPort = 8888;
 
 EthernetUDP Udp;
 IPAddress ip(192, 168, 1, 80); // IP address, may need to change depending on network
-IPAddress timeServerIp(192, 168, 1, 1);
+const char timeServer[] = "tempus1.gum.gov.pl";
 EthernetServer server(80);  // create a server at port 80
 
 unsigned long lastTimeMs = 0;
@@ -44,6 +44,7 @@ struct SensorData {
 };
 
 uint16_t bytesToRead = 0;
+uint16_t currentLevelInmm = 0 ;
 uint16_t mArray[MEDIAN_BUF_SIZE];
 
 void bubbleSort(int a[], int size){
@@ -70,11 +71,11 @@ unsigned int getMeasurement(){
 }
 
 
-unsigned long getTimestampFromTimeServer(IPAddress timeServerIp){
+unsigned long getTimestampFromTimeServer(const char timeServer[]){
 
   memset(packetBuffer, 0, NTP_PACKET_SIZE);
   packetBuffer[0] = 0b11100011; 
-  Udp.beginPacket(timeServerIp, 123);
+  Udp.beginPacket(timeServer, 123);
   Udp.write(packetBuffer, NTP_PACKET_SIZE);
   Udp.endPacket();
 
@@ -149,13 +150,13 @@ void provideWepPage(){
 
                     if(level > 1200) level = 1200;
 
-                    String sx = String(i*800/SAMPLES_TO_READ+100);
+                    String sx = String(i*(int)(800/SAMPLES_TO_READ)+100);
                     client.print(F("<line x1='"));
                     client.print(sx);
                     client.print(F("' x2='"));
                     client.print(sx);
                     client.print(F("' y1='"));
-                    client.print(String(level/2));
+                    client.print(String(level/1.5f));
                     client.print(F("' y2='610' stroke='#cccccc' stroke-width='1' stroke-linecap='butt' stroke-dasharray='5,5'/>"));
 
 //String(i*20+100) + "," + String(level/2)
@@ -188,12 +189,12 @@ void provideWepPage(){
           client.println(F("<text x='538' y='400' text-anchor='begin'>2011</text>"));
           client.println(F("<text x='684' y='400' text-anchor='begin'>2012</text>"));*/
           client.println(F("</g>"));//<text x='400' y='440' class='label-title' text-anchor='middle'>Time</text>
-          client.println(F("<g class='labels y-labels'>"));
-          client.println(F("<text x='80' y='15' text-anchor='end' font-family='Arial, sans-serif'>100%</text>"));
-          client.println(F("<text x='80' y='210' text-anchor='end' font-family='Arial, sans-serif'>50%</text>"));
-          client.println(F("<text x='80' y='410' text-anchor='end' font-family='Arial, sans-serif'>25%</text>"));
-          client.println(F("<text x='80' y='610' text-anchor='end' font-family='Arial, sans-serif'>0%</text>"));
-          client.println(F("<text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-family='Arial, sans-serif' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
+          client.println(F("<g class='labels y-labels' text-anchor='end' font-family='Arial, sans-serif'>"));
+          client.println(F("<text x='80' y='15'>100%</text>"));
+          client.println(F("<text x='80' y='210'>50%</text>"));
+          client.println(F("<text x='80' y='410'>25%</text>"));
+          client.println(F("<text x='80' y='610'>0%</text>"));
+          client.println(F("<text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
           client.println(F("<polyline fill='none' stroke='#FF0000' stroke-width='1' points='"));
           
           fileRead = SD.open(DATALOG_FILENAME, FILE_READ);
@@ -210,8 +211,9 @@ void provideWepPage(){
                   if (fileRead.read((uint8_t *)&readData, sizeof(readData)) == sizeof(readData)) {
 	                  //client.println(String(readData.timestamp) + ": " + String(readData.measurement));
                     uint16_t level = readData.measurement;
+                    currentLevelInmm = level;
                     if(level > 1200) level = 1200;
-                    client.println(String(i*800/SAMPLES_TO_READ+100) + "," + String(level/2));
+                    client.println(String(i*800/SAMPLES_TO_READ+100) + "," + String(level/1.5f));
                     //client.println("</br>");
                   }
                 }
@@ -220,7 +222,11 @@ void provideWepPage(){
             fileRead.close();
           }
 
-          client.println(F("'/></svg></body></html>"));
+          client.println(F("'/>"));
+          client.println(F("<text x='5' y='650'>level: "));
+          client.println(String(currentLevelInmm));
+          client.println(F(" mm</text></svg>"));
+          client.println(F("</body></html>"));
 
           break;
         }
@@ -276,24 +282,24 @@ void loop() {
 
   //time for new measurement
   if(epoch + measurementTimeSec >= midnightTomorrow){
-    Serial.println(F("Measuring level..."));
+    //Serial.println(F("Measuring level..."));
 
     for(int i=0; i<MEDIAN_BUF_SIZE; i++)
       mArray[i] = getMeasurement();
 
     bubbleSort(mArray, MEDIAN_BUF_SIZE);
     
-    for(int i=0; i<MEDIAN_BUF_SIZE; i++){
+    /*for(int i=0; i<MEDIAN_BUF_SIZE; i++){
       Serial.print(mArray[i]);
       Serial.print(",");
     }
-    Serial.println("");
+    Serial.println("");*/
 
     SensorData sensorData;
     sensorData.measurement = mArray[MEDIAN_BUF_SIZE/2];
     sensorData.timestamp = epoch + measurementTimeSec; //what if epoch == 0?
-    Serial.print(F("Level: "));
-    Serial.println(sensorData.measurement);
+    //Serial.print(F("Level: "));
+    //Serial.println(sensorData.measurement);
 
     File dataFile = SD.open(DATALOG_FILENAME, FILE_WRITE);
     if (dataFile) {
@@ -302,23 +308,23 @@ void loop() {
     }
 
     epoch = 0;
-    Serial.println(F("Time sync expired..."));
+    //Serial.println(F("Time sync expired..."));
     measurementTimeSec = 0;
   }
   
   //sync time 
   if(epoch == 0 && syncClockTimeSec - syncClockFailedTimeSec > SYNC_CLOCK_FAILED_TIMEOUT){
-    Serial.println(F("Time syncing..."));
-    epoch = getTimestampFromTimeServer(timeServerIp);
+    //Serial.println(F("Time syncing..."));
+    epoch = getTimestampFromTimeServer(timeServer);
     //measurementTimeSec = 0;
     if(epoch == 0){
       syncClockFailedTimeSec = syncClockTimeSec;
       midnightTomorrow = MIDNIGHT_INTERVAL;
-      Serial.print(F("Time not synced... Midnight tomorow is: "));
-      Serial.println(midnightTomorrow);
+      //Serial.print(F("Time not synced... Midnight tomorow is: "));
+      //Serial.println(midnightTomorrow);
     }else{
       midnightTomorrow = (epoch - (epoch % MIDNIGHT_INTERVAL) + MIDNIGHT_INTERVAL);
-      Serial.print(F("Time synced... Midnight tomorrow is: "));
+      //Serial.print(F("Time synced... Midnight tomorrow is: "));
       Serial.println(midnightTomorrow);
       measurementTimeSec = 0;
     }
