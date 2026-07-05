@@ -10,7 +10,7 @@
 #define ENABLE_PIN 2
 #define READ_PIN 3
 //#define SYNC_CLOCK_FAILED_TIMEOUT 300 //should be ~300s
-#define MIDNIGHT_INTERVAL 60//86400L
+#define MIDNIGHT_INTERVAL 3600//86400L
 #define MEDIAN_BUF_SIZE 11
 #define MAX_SAMPLES_TO_READ 30
 //#define BYTES_TO_READ 240
@@ -118,11 +118,12 @@ void provideWepPage(){
           client.println();
           // send web page
           client.println(F("<html><head></head><body><svg viewBox='0 0 1200 800' class='chart' style='background-color: #ffffff;'>"));
+          client.println(F("<defs><marker id='dot' markerWidth='10' markerHeight='10' refX='5' refY='5'><circle cx='5' cy='5' r='4' fill='red'/></marker></defs>"));
           client.println(F("<title id='title'>Pallet tank level</title>"));
           client.println(F("<g class='grid x-grid' id='xGrid'>"));
           client.println(F("<line x1='90' x2='90' y1='0' y2='600' stroke='black' stroke-width='1' stroke-linecap='butt'/></g>"));
           client.println(F("<g class='grid y-grid' id='yGrid'>"));
-          client.println(F("<line x1='90' x2='900' y1='600' y2='600' stroke='black' stroke-width='1' stroke-linecap='butt'/></g>"));
+          client.println(F("<line x1='90' x2='1000' y1='600' y2='600' stroke='black' stroke-width='1' stroke-linecap='butt'/></g>"));
           //client.println(F("<g class='labels x-labels'>"));
           //client.println(F("<g>"));
 
@@ -132,7 +133,7 @@ void provideWepPage(){
           client.println(F("<text x='80' y='410'>25%</text>"));
           client.println(F("<text x='80' y='610'>0%</text>"));
           client.println(F("<text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
-          client.println(F("<polyline fill='none' stroke='#FF0000' stroke-width='1' points='"));
+          client.println(F("<polyline fill='none' stroke='#FF0000' stroke-width='1' marker-start='url(#dot)' marker-mid='url(#dot)' marker-end='url(#dot)' points='"));
 
           /*time_t epochTime = 1781865455 - 946684800UL;
           struct tm *time_info = localtime(&epochTime );
