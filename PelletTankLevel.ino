@@ -10,7 +10,7 @@
 #define ENABLE_PIN 2
 #define READ_PIN 3
 //#define SYNC_CLOCK_FAILED_TIMEOUT 300 //should be ~300s
-#define MIDNIGHT_INTERVAL 3600//86400L
+#define MIDNIGHT_INTERVAL 86400L
 #define MEDIAN_BUF_SIZE 11
 #define MAX_SAMPLES_TO_READ 30
 //#define BYTES_TO_READ 240
@@ -124,15 +124,28 @@ void provideWepPage(){
           client.println(F("<line x1='90' x2='90' y1='0' y2='600' stroke='black' stroke-width='1' stroke-linecap='butt'/></g>"));
           client.println(F("<g class='grid y-grid' id='yGrid'>"));
           client.println(F("<line x1='90' x2='1000' y1='600' y2='600' stroke='black' stroke-width='1' stroke-linecap='butt'/></g>"));
+
+          client.println(F("<g stroke='#ccc' stroke-width='1' stroke-linecap='butt' stroke-dasharray='5,5'>"));
+          client.println(F("<line x1='80' x2='1000' y1='475' y2='475' />"));//1bag
+          client.println(F("<line x1='80' x2='1000' y1='400' y2='400' />"));//2bag
+          client.println(F("<line x1='80' x2='1000' y1='355' y2='355' />"));//3bag
+          client.println(F("<line x1='80' x2='1000' y1='310' y2='310' />"));//4bag
+          client.println(F("<line x1='80' x2='1000' y1='265' y2='265' />"));//5bag
+          client.println(F("<line x1='80' x2='1000' y1='220' y2='220' />"));//6bag
+          client.println(F("<line x1='80' x2='1000' y1='175' y2='175' />"));//7bag
+          client.println(F("<line x1='80' x2='1000' y1='130' y2='130' />"));//8bag
+          client.println(F("<line x1='80' x2='1000' y1='85' y2='85' />"));//9bag
+          client.println(F("<line x1='80' x2='1000' y1='40' y2='40' />"));//10bag
+          client.println(F("</g>"));
           //client.println(F("<g class='labels x-labels'>"));
           //client.println(F("<g>"));
 
-          client.println(F("<g class='labels y-labels' text-anchor='end' font-family='Arial, sans-serif'>"));
+          /*client.println(F("<g class='labels y-labels' text-anchor='end' font-family='Arial, sans-serif'>"));
           client.println(F("<text x='80' y='15'>100%</text>"));
           client.println(F("<text x='80' y='210'>50%</text>"));
           client.println(F("<text x='80' y='410'>25%</text>"));
-          client.println(F("<text x='80' y='610'>0%</text>"));
-          client.println(F("<text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
+          client.println(F("<text x='80' y='610'>0%</text></g>"));*/
+          client.println(F("<g><text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
           client.println(F("<polyline fill='none' stroke='#FF0000' stroke-width='1' marker-start='url(#dot)' marker-mid='url(#dot)' marker-end='url(#dot)' points='"));
 
           /*time_t epochTime = 1781865455 - 946684800UL;
