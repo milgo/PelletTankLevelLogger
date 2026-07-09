@@ -1,4 +1,5 @@
 #include <Ethernet.h>
+#include <virtuabotixRTC.h>
 //#include <EthernetUdp.h>
 #include <SD.h>
 #include <SPI.h>
@@ -10,7 +11,7 @@
 #define ENABLE_PIN 2
 #define READ_PIN 3
 //#define SYNC_CLOCK_FAILED_TIMEOUT 300 //should be ~300s
-#define MIDNIGHT_INTERVAL 86400L
+#define MIDNIGHT_INTERVAL 60//86400L
 #define MEDIAN_BUF_SIZE 11
 #define MAX_SAMPLES_TO_READ 30
 //#define BYTES_TO_READ 240
@@ -30,6 +31,7 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 80); // IP address, may need to change depending on network
 //const char timeServer[] = "tempus1.gum.gov.pl";
 EthernetServer server(80);  // create a server at port 80
+virtuabotixRTC myRTC(6, 7, 8);
 
 unsigned long lastTimeMs = 0;
 unsigned long timeMs = 0;
@@ -42,6 +44,11 @@ unsigned long midnightTomorrow = 0;
 
 struct SensorData {
 //  uint32_t timestamp;
+  uint8_t year;
+  uint8_t month;
+  uint8_t day;
+  uint8_t hour;
+  uint8_t minute;
   uint16_t measurement;
 };
 
@@ -180,8 +187,8 @@ void provideWepPage(){
           }
 
           client.println(F("'/>"));
-          client.println(F("<text x='5' y='650'>level: "));
-          client.println(String(getMeasurement()));
+          client.println(F("<text x='5' y='650'>"));
+          client.println(String(myRTC.year) + "-" + String(myRTC.month) + "-" + String(myRTC.dayofmonth) + " " + String(myRTC.hours) + ":" + String(myRTC.minutes) + ": " + String(getMeasurement()));
           client.println(F(" mm</text></svg>"));
           client.println(F("</body></html>"));
 
@@ -220,10 +227,13 @@ void setup() {
     Serial.println(F("SD Error"));
     while (1);
   }
+
+  //myRTC.setDS1302Time(00, 38, 23, 4, 9, 7, 2026);
 }
 
 void loop() {
 
+  myRTC.updateTime();
   timeMs = millis(); // Pobranie aktualnego czasu
   if(timeMs - lastTimeMs > 1000){
     measurementTimeSec++;
@@ -251,6 +261,12 @@ void loop() {
     Serial.println("");*/
 
     SensorData sensorData;
+    sensorData.year = myRTC.year;
+    sensorData.month = myRTC.month;
+    sensorData.day = myRTC.dayofmonth;
+    sensorData.hour = myRTC.hours;
+    sensorData.minute = myRTC.minutes;
+    
     sensorData.measurement = mArray[MEDIAN_BUF_SIZE/2];
     //sensorData.timestamp = epoch + measurementTimeSec; //what if epoch == 0?
     //Serial.print(F("Level: "));
