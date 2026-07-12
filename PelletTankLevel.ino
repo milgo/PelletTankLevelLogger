@@ -11,7 +11,7 @@
 #define ENABLE_PIN 2
 #define READ_PIN 3
 //#define SYNC_CLOCK_FAILED_TIMEOUT 300 //should be ~300s
-#define MIDNIGHT_INTERVAL 60//86400L
+#define MIDNIGHT_INTERVAL 86400L
 #define MEDIAN_BUF_SIZE 11
 #define MAX_SAMPLES_TO_READ 30
 //#define BYTES_TO_READ 240
@@ -188,8 +188,8 @@ void provideWepPage(){
 
           client.println(F("'/>"));
           client.println(F("<text x='5' y='650'>"));
-          client.println(String(myRTC.year) + "-" + String(myRTC.month) + "-" + String(myRTC.dayofmonth) + " " + String(myRTC.hours) + ":" + String(myRTC.minutes) + ": " + String(getMeasurement()));
-          client.println(F(" mm</text></svg>"));
+          client.println(String(myRTC.year) + "-" + String(myRTC.month) + "-" + String(myRTC.dayofmonth) + " " + String(myRTC.hours) + ":" + String(myRTC.minutes) + ", range: " + String(getMeasurement()) + "mm, sec to midnight: " + String((uint32_t)(midnightTomorrow - measurementTimeSec)) + "sec.");
+          client.println(F("</text></svg>"));
           client.println(F("</body></html>"));
 
           break;
@@ -215,7 +215,7 @@ void setup() {
   timeMs = 0;
   lastTimeMs = 0;
   //syncClockFailedTimeSec = 0;
-  measurementTimeSec = 0;
+  measurementTimeSec = MIDNIGHT_INTERVAL; //measure when power-on
   midnightTomorrow = MIDNIGHT_INTERVAL;
   pinMode(ENABLE_PIN, OUTPUT);
   pinMode(READ_PIN, INPUT);
@@ -261,7 +261,7 @@ void loop() {
     Serial.println("");*/
 
     SensorData sensorData;
-    sensorData.year = myRTC.year;
+    sensorData.year = myRTC.year-2000;
     sensorData.month = myRTC.month;
     sensorData.day = myRTC.dayofmonth;
     sensorData.hour = myRTC.hours;
@@ -281,6 +281,10 @@ void loop() {
     //epoch = 0;
     //Serial.println(F("Time sync expired..."));
     measurementTimeSec = 0;
+    int mt = MIDNIGHT_INTERVAL - (myRTC.hours * 3600 + myRTC.minutes * 60 + myRTC.seconds); //calculate next measure time on midnight
+    if(mt < 3600)
+      mt = 3600;
+    midnightTomorrow = mt;
   }
   
   //sync time 
