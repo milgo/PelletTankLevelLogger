@@ -281,9 +281,12 @@ void loop() {
     //epoch = 0;
     //Serial.println(F("Time sync expired..."));
     measurementTimeSec = 0;
-    int mt = MIDNIGHT_INTERVAL - (myRTC.hours * 3600 + myRTC.minutes * 60 + myRTC.seconds); //calculate next measure time on midnight
-    if(mt < 3600)
-      mt = 3600;
+    unsigned long todaySec = (unsigned long)myRTC.hours * 3600L;
+    todaySec += (unsigned long)myRTC.minutes * 60L;
+    todaySec += (unsigned long)myRTC.seconds;
+    unsigned long mt = MIDNIGHT_INTERVAL - todaySec; //calculate next measure time on midnight
+    if(mt < 0)
+      mt = 60;
     midnightTomorrow = mt;
   }
   
