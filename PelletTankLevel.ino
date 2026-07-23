@@ -173,13 +173,19 @@ void provideWepPage(){
 
             // Calculate the starting position (End of file minus X bytes)
             uint32_t targetPosition = fileSize - bytesToRead;
+            uint8_t readDay = -1;
             // Move the internal file pointer to the target position
             if (fileRead.seek(targetPosition)) {
               for(int i=0; i<samplesToRead; i++){
                 if (fileRead.read((uint8_t *)&readData, sampleInBytes) == sampleInBytes) {
-                    uint16_t level = readData.measurement;
-                    if(level > MAX) level = MAX;
-                    client.println(String((float)(i*MAX/samplesToRead)+100.0f) + "," + String(level/SCALE_FACTOR));
+                                   
+                    if(readDay > 0 && readData.day != readDay){
+                      uint16_t level = readData.measurement;   
+                      if(level > MAX) level = MAX;
+                      client.println(String((float)(i*MAX/samplesToRead)+100.0f) + "," + String(level/SCALE_FACTOR));
+                    }
+                    
+                    readDay = readData.day;
                 }
               }
             }
