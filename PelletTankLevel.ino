@@ -252,17 +252,17 @@ void loop() {
           dataFile.write((const uint8_t *)&sensorData, sizeof(sensorData));
           dataFile.close();     
         }
-
-        measurementTimeSec = 0;
-        unsigned long todaySec = (unsigned long)myRTC.hours * 3600L;
-        todaySec += (unsigned long)myRTC.minutes * 60L;
-        todaySec += (unsigned long)myRTC.seconds;
-        unsigned long mt = MIDNIGHT_INTERVAL - todaySec; //calculate next measure time on midnight
-        if(mt < 0)
-          mt = 60;
-        midnightTomorrow = mt;
       }
     }
+        
+    measurementTimeSec = 0;
+    unsigned long todaySec = (unsigned long)myRTC.hours * 3600L;
+    todaySec += (unsigned long)myRTC.minutes * 60L;
+    todaySec += (unsigned long)myRTC.seconds;
+    unsigned long mt = MIDNIGHT_INTERVAL - todaySec; //calculate next measure time on midnight
+    if(mt < 0)
+      mt = 60;
+    midnightTomorrow = mt;
   }
 }
 
