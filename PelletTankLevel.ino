@@ -77,34 +77,6 @@ unsigned int getMeasurement(){
   return readByte;
 }
 
-
-/*unsigned long getTimestampFromTimeServer(const char timeServer[]){
-
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);
-  packetBuffer[0] = 0b11100011; 
-  Udp.beginPacket(timeServer, 123);
-  Udp.write(packetBuffer, NTP_PACKET_SIZE);
-  Udp.endPacket();
-
-  delay(1000);
-  
-  if (Udp.parsePacket()) {
-    Udp.read(packetBuffer, NTP_PACKET_SIZE);
-    
-    // Extract timestamp (seconds since Jan 1 1900)
-    unsigned long hiword = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long loword = word(packetBuffer[42], packetBuffer[43]);
-    unsigned long secs = hiword << 16 | loword;
-    // Convert to Unix epoch (seconds since Jan 1 1970)
-    unsigned long epoch = secs - 2208988800UL;
-    
-    Serial.print("Unix time: ");
-    Serial.println(epoch);
-    return epoch;
-  }
-  return 0;
-}*/
-
 void provideWepPage(){
   EthernetClient client = server.available();
   File fileRead;
@@ -144,22 +116,9 @@ void provideWepPage(){
           client.println(F("<line x1='80' x2='1000' y1='85' y2='85' />"));//9bag
           client.println(F("<line x1='80' x2='1000' y1='40' y2='40' />"));//10bag
           client.println(F("</g>"));
-          //client.println(F("<g class='labels x-labels'>"));
-          //client.println(F("<g>"));
 
-          /*client.println(F("<g class='labels y-labels' text-anchor='end' font-family='Arial, sans-serif'>"));
-          client.println(F("<text x='80' y='15'>100%</text>"));
-          client.println(F("<text x='80' y='210'>50%</text>"));
-          client.println(F("<text x='80' y='410'>25%</text>"));
-          client.println(F("<text x='80' y='610'>0%</text></g>"));*/
           client.println(F("<g><text x='30' y='300' class='label-title' text-anchor='middle' transform='rotate(-90,30,300)' font-size='x-large'>Poziom pelletu w zasobniku</text></g>"));
           client.println(F("<polyline fill='none' stroke='#FF0000' stroke-width='1' marker-start='url(#dot)' marker-mid='url(#dot)' marker-end='url(#dot)' points='"));
-
-          /*time_t epochTime = 1781865455 - 946684800UL;
-          struct tm *time_info = localtime(&epochTime );
-          char buffer[20];
-          strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", time_info);
-          client.println(buffer);*/
 
           fileRead = SD.open(DATALOG_FILENAME, FILE_READ);
           if (fileRead) {
@@ -255,63 +214,55 @@ void loop() {
   if(/*epoch + */measurementTimeSec >= midnightTomorrow){
     //Serial.println(F("Measuring level..."));
 
-    for(int i=0; i<MEDIAN_BUF_SIZE; i++)
-      mArray[i] = getMeasurement();
-
-    bubbleSort(mArray, MEDIAN_BUF_SIZE);
-    
-    /*for(int i=0; i<MEDIAN_BUF_SIZE; i++){
-      Serial.print(mArray[i]);
-      Serial.print(",");
-    }
-    Serial.println("");*/
-
-    SensorData sensorData;
-    sensorData.year = myRTC.year-2000;
-    sensorData.month = myRTC.month;
-    sensorData.day = myRTC.dayofmonth;
-    sensorData.hour = myRTC.hours;
-    sensorData.minute = myRTC.minutes;
-    
-    sensorData.measurement = mArray[MEDIAN_BUF_SIZE/2];
-    //sensorData.timestamp = epoch + measurementTimeSec; //what if epoch == 0?
-    //Serial.print(F("Level: "));
-    //Serial.println(sensorData.measurement);
-
-    File dataFile = SD.open(DATALOG_FILENAME, FILE_WRITE);
-    if (dataFile) {
-      dataFile.write((const uint8_t *)&sensorData, sizeof(sensorData));
-      dataFile.close();     
+    //check if last logger measurement was already taken today
+    bool measuredToday = false;
+    File fileRead = SD.open(DATALOG_FILENAME, FILE_READ);
+    if (fileRead) {
+      uint32_t fileSize = fileRead.size();
+      SensorData readData;
+      if (fileRead.seek(fileSize - sizeof(readData))) {
+        if (fileRead.read((uint8_t *)&readData, sizeof(readData)) == sizeof(readData)) {
+          if(myRTC.dayofmonth == readData.day){
+            measuredToday = true;
+          }
+        }
+      }
+      fileRead.close();
     }
 
-    //epoch = 0;
-    //Serial.println(F("Time sync expired..."));
-    measurementTimeSec = 0;
-    unsigned long todaySec = (unsigned long)myRTC.hours * 3600L;
-    todaySec += (unsigned long)myRTC.minutes * 60L;
-    todaySec += (unsigned long)myRTC.seconds;
-    unsigned long mt = MIDNIGHT_INTERVAL - todaySec; //calculate next measure time on midnight
-    if(mt < 0)
-      mt = 60;
-    midnightTomorrow = mt;
+    if(measuredToday == false){
+
+      for(int i=0; i<MEDIAN_BUF_SIZE; i++)
+        mArray[i] = getMeasurement();
+
+      bubbleSort(mArray, MEDIAN_BUF_SIZE);
+
+      SensorData sensorData;
+      sensorData.year = myRTC.year-2000;
+      sensorData.month = myRTC.month;
+      sensorData.day = myRTC.dayofmonth;
+      sensorData.hour = myRTC.hours;
+      sensorData.minute = myRTC.minutes;
+
+      if(mArray[MEDIAN_BUF_SIZE/2] < MAX){ 
+        sensorData.measurement = mArray[MEDIAN_BUF_SIZE/2];
+
+        File dataFile = SD.open(DATALOG_FILENAME, FILE_WRITE);
+        if (dataFile) {
+          dataFile.write((const uint8_t *)&sensorData, sizeof(sensorData));
+          dataFile.close();     
+        }
+
+        measurementTimeSec = 0;
+        unsigned long todaySec = (unsigned long)myRTC.hours * 3600L;
+        todaySec += (unsigned long)myRTC.minutes * 60L;
+        todaySec += (unsigned long)myRTC.seconds;
+        unsigned long mt = MIDNIGHT_INTERVAL - todaySec; //calculate next measure time on midnight
+        if(mt < 0)
+          mt = 60;
+        midnightTomorrow = mt;
+      }
+    }
   }
-  
-  //sync time 
-  /*if(epoch == 0 && syncClockTimeSec - syncClockFailedTimeSec > SYNC_CLOCK_FAILED_TIMEOUT){
-    //Serial.println(F("Time syncing..."));
-    epoch = getTimestampFromTimeServer(timeServer);
-    //measurementTimeSec = 0;
-    if(epoch == 0){
-      syncClockFailedTimeSec = syncClockTimeSec;
-      midnightTomorrow = MIDNIGHT_INTERVAL;
-      //Serial.print(F("Time not synced... Midnight tomorow is: "));
-      //Serial.println(midnightTomorrow);
-    }else{
-      midnightTomorrow = (epoch - (epoch % MIDNIGHT_INTERVAL) + MIDNIGHT_INTERVAL);
-      //Serial.print(F("Time synced... Midnight tomorrow is: "));
-      Serial.println(midnightTomorrow);
-      measurementTimeSec = 0;
-    }
-  }*/
 }
 
