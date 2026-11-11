@@ -52,6 +52,11 @@ struct SensorData {
   uint16_t measurement;
 };
 
+struct OneWirePacket {
+  uint16_t level;
+  float temp;
+};
+
 uint16_t mArray[MEDIAN_BUF_SIZE];
 
 void bubbleSort(int a[], int size){
@@ -66,15 +71,26 @@ void bubbleSort(int a[], int size){
   }
 }
 
-unsigned int getMeasurement(){
-  unsigned int readByte = 0;
+OneWirePacket getMeasurement(){
+  OneWirePacket packet;
+  unsigned int level = 0;
+  union {
+    long ival;
+    float fval;
+  } temp;
+  temp.fval = 0.0;
   digitalWrite(ENABLE_PIN, HIGH);
   for (int i=0; i<16; i++) 
     if(pulseIn(READ_PIN, LOW, 1000) <= 20) 
-      readByte = bitSet(readByte, i);
+      level = bitSet(level, i);
+  for (int i=0; i<32; i++) 
+    if(pulseIn(READ_PIN, LOW, 1000) <= 20) 
+      temp.ival = bitSet(temp.ival, i);
   digitalWrite(ENABLE_PIN, LOW);
   delay(200);
-  return readByte;
+  packet.level = level;
+  packet.temp = temp.fval;
+  return packet;
 }
 
 void provideWepPage(){
@@ -151,9 +167,10 @@ void provideWepPage(){
             fileRead.close();
           }
 
+          OneWirePacket oneWirePacket = getMeasurement();
           client.println(F("'/>"));
           client.println(F("<text x='5' y='650'>"));
-          client.println(String(myRTC.year) + "-" + String(myRTC.month) + "-" + String(myRTC.dayofmonth) + " " + String(myRTC.hours) + ":" + String(myRTC.minutes) + ", range: " + String(getMeasurement()) + "mm, sec to midnight: " + String((uint32_t)(midnightTomorrow - measurementTimeSec)) + "sec.");
+          client.println(String(myRTC.year) + "-" + String(myRTC.month) + "-" + String(myRTC.dayofmonth) + " " + String(myRTC.hours) + ":" + String(myRTC.minutes) + ", range: " + String(oneWirePacket.level) + "mm, temp: " + String(oneWirePacket.temp) + " sec to midnight: " + String((uint32_t)(midnightTomorrow - measurementTimeSec)) + "sec.");
           client.println(F("</text></svg>"));
           client.println(F("</body></html>"));
 
@@ -233,7 +250,7 @@ void loop() {
     if(measuredToday == false){
 
       for(int i=0; i<MEDIAN_BUF_SIZE; i++)
-        mArray[i] = getMeasurement();
+        mArray[i] = getMeasurement().level;
 
       bubbleSort(mArray, MEDIAN_BUF_SIZE);
 
